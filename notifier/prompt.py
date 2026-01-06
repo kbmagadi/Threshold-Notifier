@@ -1,15 +1,17 @@
 def build_prompt(context: dict) -> str:
-    supporting = "\n".join(
+    causation_lines = "\n".join(
         [
-            f"- {k}: {v['baseline']} → {v['current']}"
-            for k, v in context["supporting_metrics"].items()
+            f"- {c['metric']} moved {c['direction']} by {c['change_percent']}%"
+            for c in context["causation_signals"]
         ]
     )
 
     return f"""
 System:
 You are a data analyst explaining why an alert was triggered.
-Use ONLY the provided data. Do NOT speculate.
+Use ONLY the provided data.
+Explain causation ONLY using the causation signals below.
+Do NOT speculate beyond these signals.
 
 User:
 An alert was triggered.
@@ -20,15 +22,18 @@ Alert:
 - Time Window: {context['alert']['time_window']}
 
 Threshold:
-- Condition: {context['threshold']['condition']}
-- Breached by: {context['threshold']['breached_by']}
+- Type: {context['threshold']['type']}
+- Value: {context['threshold']['value']}%
+- Breached by: {context['threshold']['breached_by']}%
 
 Values:
 - Current: {context['values']['current']}
 - Baseline: {context['values']['baseline']}
 
-Supporting Metrics:
-{supporting}
+Causation Signals:
+{causation_lines}
 
-Explain in 2–3 clear sentences why this alert was triggered.
+Explain in 2–3 concise sentences:
+1. Why the threshold was breached
+2. Which metric changes most directly contributed to it
 """

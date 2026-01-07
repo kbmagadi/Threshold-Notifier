@@ -1,25 +1,57 @@
 def build_context(event):
     def pct_change(curr, base):
         if base == 0:
-            return 0
+            return 0.0
         return round(((curr - base) / base) * 100, 2)
 
-    metric_change = pct_change(event.current_value, event.baseline_value)
+    def extract_numeric(val):
+        if isinstance(val, str):
+            return float(val.replace("%", ""))
+        return float(val)
+
+    # -----------------------------
+    # Target metric change
+    # -----------------------------
+    target_change = pct_change(
+        event.current_value,
+        event.baseline_value
+    )
 
     causation = []
 
+    # -----------------------------
+    # Deterministic causation signals
+    # (NO causal graph used here)
+    # -----------------------------
     for name, values in event.supporting_metrics.items():
-        curr = float(str(values["current"]).replace("%", ""))
-        base = float(str(values["baseline"]).replace("%", ""))
+        curr = extract_numeric(values["current"])
+        base = extract_numeric(values["baseline"])
         change = pct_change(curr, base)
 
-        causation.append({
-            "metric": name,
-            "direction": "down" if change < 0 else "up",
-            "change_percent": abs(change)
-        })
+        # Direction must align with target
+        if target_change < 0 and change < 0:
+            causation.append({
+                "metric": name,
+                "direction": "down",
+                "change_percent": abs(change)
+            })
+        elif target_change > 0 and change > 0:
+            causation.append({
+                "metric": name,
+                "direction": "up",
+                "change_percent": abs(change)
+            })
 
-    return {
+    # Rank by impact (largest change first)
+    causation.sort(
+        key=lambda x: x["change_percent"],
+        reverse=True
+    )
+
+    # -----------------------------
+    # Build context for LLM
+    # -----------------------------
+    context = {
         "alert": {
             "name": event.rule_name,
             "metric": event.metric,
@@ -28,7 +60,7 @@ def build_context(event):
         "threshold": {
             "type": event.threshold_type,
             "value": event.threshold_value,
-            "breached_by": abs(metric_change)
+            "breached_by": abs(target_change)
         },
         "values": {
             "current": event.current_value,
@@ -36,3 +68,11 @@ def build_context(event):
         },
         "causation_signals": causation
     }
+
+    # -----------------------------
+    # Inject causal graph YAML (verbatim)
+    # -----------------------------
+    if getattr(event, "causal_graph_yaml", None):
+        context["causal_graph_yaml"] = event.causal_graph_yaml
+
+    return context

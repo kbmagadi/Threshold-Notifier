@@ -6,34 +6,46 @@ def build_prompt(context: dict) -> str:
         ]
     )
 
+    causal_graph_yaml = context.get("causal_graph_yaml", "")
+
     return f"""
-System:
-You are a data analyst explaining why an alert was triggered.
-Use ONLY the provided data.
-Explain causation ONLY using the causation signals below.
-Do NOT speculate beyond these signals.
+        System:
+        You are a data analyst explaining why a metric threshold alert was triggered.
+        Use ONLY the information explicitly provided below.
+        Do NOT introduce new metrics, relationships, or assumptions.
 
-User:
-An alert was triggered.
+        User:
+        An alert was triggered.
 
-Alert:
-- Name: {context['alert']['name']}
-- Metric: {context['alert']['metric']}
-- Time Window: {context['alert']['time_window']}
+        Alert:
+        - Name: {context['alert']['name']}
+        - Metric: {context['alert']['metric']}
+        - Time Window: {context['alert']['time_window']}
 
-Threshold:
-- Type: {context['threshold']['type']}
-- Value: {context['threshold']['value']}%
-- Breached by: {context['threshold']['breached_by']}%
+        Threshold:
+        - Type: {context['threshold']['type']}
+        - Value: {context['threshold']['value']}%
+        - Breached by: {context['threshold']['breached_by']}%
 
-Values:
-- Current: {context['values']['current']}
-- Baseline: {context['values']['baseline']}
+        Values:
+        - Current: {context['values']['current']}
+        - Baseline: {context['values']['baseline']}
 
-Causation Signals:
-{causation_lines}
+        Deterministic Causation Signals (PRIMARY EVIDENCE):
+        {causation_lines}
 
-Explain in 2–3 concise sentences:
-1. Why the threshold was breached
-2. Which metric changes most directly contributed to it
-"""
+        Causal Graph (STRUCTURAL REFERENCE ONLY — not proof of causation):
+        ```yaml
+        {causal_graph_yaml}
+        
+        Instructions:
+        - Base your explanation ONLY on the causation signals
+        - Use the causal graph only to understand upstream structure
+        - Prefer direct contributors over indirect ones
+        - Use conditional language (may have, could be influenced by)
+        - Do NOT invent causes not present in the causation signals
+        - Do NOT infer certainty or numeric relationships
+        - Explain in 2–3 concise sentences:
+        - Why the threshold was breached
+        - Which metric changes most directly contributed to it
+        """

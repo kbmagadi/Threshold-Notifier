@@ -47,9 +47,9 @@ Dashboard Notifier/
 │   ├── dispatcher.py           # Channel routing
 │   ├── slack.py                # Slack formatting & delivery
 │   └── email.py                # Email delivery
-├── causal_graph.yaml           # Human-friendly causal hints (for explanations only)
+├── causal_graph.yaml           # Human-friendly causal hints
 ├── manual_test_llm.py          # Manual end-to-end runner
-└── main.py                     # Production entry point (wire your trigger here)
+└── main.py                     # Production entry point
 ```
 
 ## Safety guardrails
